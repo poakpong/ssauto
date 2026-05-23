@@ -101,5 +101,22 @@ function ssauto_install(): void {
  * Implements hook_uninstall().
  */
 function ssauto_uninstall(): void {
+  \Drupal::configFactory()->getEditable('ssauto.settings')->delete();
   \Drupal::service('cache_tags.invalidator')->invalidateTags(['ssauto_index']);
+}
+
+/**
+ * Creates ssauto.settings config for existing installations.
+ */
+function ssauto_update_8001(): string {
+  $config = \Drupal::configFactory()->getEditable('ssauto.settings');
+  if ($config->isNew()) {
+    $config
+      ->set('autocomplete_limit', 8)
+      ->set('results_per_page', 10)
+      ->set('min_keyword_length', 2)
+      ->save();
+    return 'Created ssauto.settings configuration with default values.';
+  }
+  return 'ssauto.settings already exists, skipped.';
 }

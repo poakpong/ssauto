@@ -1,0 +1,13 @@
+ssauto.settings:
+  type: config_object
+  label: 'Smart Search Autocomplete settings'
+  mapping:
+    autocomplete_limit:
+      type: integer
+      label: 'Autocomplete suggestions limit'
+    results_per_page:
+      type: integer
+      label: 'Results per page'
+    min_keyword_length:
+      type: integer
+      label: 'Minimum keyword length'

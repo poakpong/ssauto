@@ -34,7 +34,7 @@ final class SsautoResultsController extends ControllerBase {
    * Renders /smart-search?q={keyword}&page={n}.
    */
   public function results(Request $request): array {
-    $limit   = (int) $this->configFactory->get('ssauto.settings')->get('results_per_page');
+    $limit   = (int) $this->configFactory->get('ssauto.settings')->get('results_per_page') ?: 10;
     $keyword = trim((string) $request->query->get('q', ''));
     $page    = max(0, (int) $request->query->get('page', 0));
     $offset  = $page * $limit;

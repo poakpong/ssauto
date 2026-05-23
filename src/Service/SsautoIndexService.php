@@ -108,8 +108,8 @@ final class SsautoIndexService {
    */
   public function autocomplete(string $keyword, int $limit = 0): array {
     $config  = $this->configFactory->get('ssauto.settings');
-    $limit   = $limit > 0 ? $limit : (int) $config->get('autocomplete_limit');
-    $minLen  = (int) $config->get('min_keyword_length');
+    $limit   = $limit > 0 ? $limit : ((int) $config->get('autocomplete_limit') ?: 8);
+    $minLen  = (int) $config->get('min_keyword_length') ?: 2;
 
     $keyword = trim($keyword);
     if (mb_strlen($keyword) < $minLen) {
