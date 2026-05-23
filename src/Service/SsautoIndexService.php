@@ -249,7 +249,8 @@ final class SsautoIndexService {
       )->fetchField();
 
       if ($total === 0) {
-        return ['items' => [], 'total' => 0];
+        // FULLTEXT returned nothing — try LIKE fallback before giving up.
+        return $this->runSearchLike($keyword, $limit, $offset);
       }
 
       // Scored results: title match weighted 3× for relevance boost.
@@ -285,9 +286,105 @@ final class SsautoIndexService {
       return ['items' => $items, 'total' => $total];
     }
     catch (\Exception $e) {
-      \Drupal::logger('ssauto')->error('Search query failed: @msg', ['@msg' => $e->getMessage()]);
+      // FULLTEXT index missing or failed — fall back to LIKE search.
+      \Drupal::logger('ssauto')->warning('FULLTEXT search failed, using LIKE fallback: @msg', ['@msg' => $e->getMessage()]);
+      return $this->runSearchLike($keyword, $limit, $offset);
+    }
+  }
+
+  /**
+   * LIKE-based search fallback used when FULLTEXT index is unavailable.
+   *
+   * @return array{items: list<array{nid: int, title: string, url: string, summary: string, tags: string, score: float}>, total: int}
+   */
+  private function runSearchLike(string $keyword, int $limit, int $offset): array {
+    try {
+      $like = '%' . $this->database->escapeLike($keyword) . '%';
+
+      $total = (int) $this->database->select('ssauto_index', 's')
+        ->where('title LIKE :like OR summary LIKE :like2 OR tags LIKE :like3', [
+          ':like'  => $like,
+          ':like2' => $like,
+          ':like3' => $like,
+        ])
+        ->countQuery()
+        ->execute()
+        ->fetchField();
+
+      if ($total === 0) {
+        return ['items' => [], 'total' => 0];
+      }
+
+      $rows = $this->database->select('ssauto_index', 's')
+        ->fields('s', ['nid', 'title', 'url', 'summary', 'tags'])
+        ->where('title LIKE :like OR summary LIKE :like2 OR tags LIKE :like3', [
+          ':like'  => $like,
+          ':like2' => $like,
+          ':like3' => $like,
+        ])
+        ->orderBy('changed', 'DESC')
+        ->range($offset, $limit)
+        ->execute()
+        ->fetchAll();
+
+      $items = array_map(
+        fn($row) => [
+          'nid'     => (int) $row->nid,
+          'title'   => $row->title,
+          'url'     => $row->url,
+          'summary' => $row->summary,
+          'tags'    => $row->tags,
+          'score'   => 0.0,
+        ],
+        $rows
+      );
+
+      return ['items' => $items, 'total' => $total];
+    }
+    catch (\Exception $e) {
+      \Drupal::logger('ssauto')->error('LIKE search failed: @msg', ['@msg' => $e->getMessage()]);
       return ['items' => [], 'total' => 0];
     }
+  }
+
+  /**
+   * Returns count of nodes that are missing or stale in the index.
+   */
+  public function getUnindexedCount(): int {
+    try {
+      return (int) $this->database->query(
+        "SELECT COUNT(*) FROM {node} n
+         LEFT JOIN {ssauto_index} si ON n.nid = si.nid
+         WHERE n.status = 1 AND (si.nid IS NULL OR n.changed > si.changed)"
+      )->fetchField();
+    }
+    catch (\Exception) {
+      return 0;
+    }
+  }
+
+  /**
+   * Indexes a batch of unindexed or stale published nodes (used by cron).
+   */
+  public function indexPending(int $batchSize): int {
+    try {
+      $nids = $this->database->query(
+        "SELECT n.nid FROM {node} n
+         LEFT JOIN {ssauto_index} si ON n.nid = si.nid
+         WHERE n.status = 1 AND (si.nid IS NULL OR n.changed > si.changed)
+         LIMIT :limit",
+        [':limit' => $batchSize]
+      )->fetchCol();
+    }
+    catch (\Exception) {
+      return 0;
+    }
+
+    if (empty($nids)) {
+      return 0;
+    }
+
+    return $this->buildIndex(array_map('intval', $nids));
   }
 
 }

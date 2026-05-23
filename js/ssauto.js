@@ -2,10 +2,10 @@
  * @file
  * Smart Search Autocomplete — overlay UI with keyboard navigation.
  *
- * Depends on: core/drupal, core/jquery, core/drupalSettings.
+ * Depends on: core/drupal, core/jquery, core/drupalSettings, core/once.
  */
 
-(function ($, Drupal, drupalSettings) {
+(function ($, Drupal, drupalSettings, once) {
   'use strict';
 
   Drupal.behaviors.ssautoOverlay = {
@@ -279,4 +279,4 @@
     },
   };
 
-}(jQuery, Drupal, drupalSettings));
+}(jQuery, Drupal, drupalSettings, once));

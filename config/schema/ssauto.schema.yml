@@ -11,3 +11,6 @@ ssauto.settings:
     min_keyword_length:
       type: integer
       label: 'Minimum keyword length'
+    cron_batch_size:
+      type: integer
+      label: 'Cron batch size'

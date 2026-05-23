@@ -93,6 +93,17 @@ final class SsautoSettingsForm extends ConfigFormBase {
         . $rebuildNote,
     ];
 
+    // Pending nodes count.
+    $pending = $total - $indexed;
+    if ($pending > 0) {
+      $form['index_status']['pending_note'] = [
+        '#type'   => 'item',
+        '#markup' => '<p style="margin:8px 0 0;color:#555;">'
+          . $this->t('<strong>@count</strong> node(s) pending — cron will index them automatically.', ['@count' => $pending])
+          . '</p>',
+      ];
+    }
+
     // -------------------------------------------------------------------------
     // Settings fields
     // -------------------------------------------------------------------------
@@ -132,6 +143,16 @@ final class SsautoSettingsForm extends ConfigFormBase {
       '#required'      => TRUE,
     ];
 
+    $form['settings']['cron_batch_size'] = [
+      '#type'          => 'number',
+      '#title'         => $this->t('Cron batch size'),
+      '#description'   => $this->t('Number of nodes indexed per cron run. Lower values reduce server load; higher values catch up faster.'),
+      '#default_value' => $config->get('cron_batch_size') ?? 50,
+      '#min'           => 10,
+      '#max'           => 500,
+      '#required'      => TRUE,
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -143,6 +164,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
       ->set('autocomplete_limit', (int) $form_state->getValue('autocomplete_limit'))
       ->set('results_per_page', (int) $form_state->getValue('results_per_page'))
       ->set('min_keyword_length', (int) $form_state->getValue('min_keyword_length'))
+      ->set('cron_batch_size', (int) $form_state->getValue('cron_batch_size'))
       ->save();
 
     parent::submitForm($form, $form_state);

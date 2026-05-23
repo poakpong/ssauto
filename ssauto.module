@@ -62,6 +62,24 @@ function ssauto_node_delete(NodeInterface $node): void {
 }
 
 /**
+ * Implements hook_cron().
+ *
+ * Incrementally indexes unindexed or stale nodes, similar to Drupal core
+ * Search. Processes cron_batch_size nodes per cron run.
+ */
+function ssauto_cron(): void {
+  /** @var \Drupal\ssauto\Service\SsautoIndexService $service */
+  $service   = \Drupal::service('ssauto.index_service');
+  $batchSize = (int) \Drupal::config('ssauto.settings')->get('cron_batch_size') ?: 50;
+
+  $count = $service->indexPending($batchSize);
+
+  if ($count > 0) {
+    \Drupal::logger('ssauto')->info('Cron: indexed @count node(s).', ['@count' => $count]);
+  }
+}
+
+/**
  * Implements hook_modules_installed().
  */
 function ssauto_modules_installed(array $modules): void {
