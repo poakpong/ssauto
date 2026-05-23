@@ -1,0 +1,73 @@
+<?php
+
+/**
+ * @file
+ * Smart Search Autocomplete module hooks.
+ */
+
+declare(strict_types=1);
+
+use Drupal\node\NodeInterface;
+
+/**
+ * Implements hook_theme().
+ */
+function ssauto_theme(): array {
+  return [
+    'ssauto_block' => [
+      'template' => 'ssauto-block',
+      'variables' => [],
+    ],
+    'ssauto_results' => [
+      'template' => 'ssauto-results',
+      'variables' => [
+        'keyword' => '',
+        'results' => [],
+        'total' => 0,
+        'page' => 0,
+        'limit' => 10,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function ssauto_node_insert(NodeInterface $node): void {
+  if ($node->isPublished()) {
+    \Drupal::service('ssauto.index_service')->buildIndex([$node->id()]);
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function ssauto_node_update(NodeInterface $node): void {
+  /** @var \Drupal\ssauto\Service\SsautoIndexService $service */
+  $service = \Drupal::service('ssauto.index_service');
+  if ($node->isPublished()) {
+    $service->buildIndex([$node->id()]);
+  }
+  else {
+    $service->removeFromIndex((int) $node->id());
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function ssauto_node_delete(NodeInterface $node): void {
+  \Drupal::service('ssauto.index_service')->removeFromIndex((int) $node->id());
+}
+
+/**
+ * Implements hook_modules_installed().
+ */
+function ssauto_modules_installed(array $modules): void {
+  if (in_array('search', $modules, TRUE)) {
+    \Drupal::messenger()->addWarning(
+      t('The core Search module is enabled alongside Smart Search Autocomplete. Consider disabling the core Search module to avoid duplication.')
+    );
+  }
+}

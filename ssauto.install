@@ -1,0 +1,105 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the ssauto module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Implements hook_schema().
+ */
+function ssauto_schema(): array {
+  $schema['ssauto_index'] = [
+    'description' => 'Stores a denormalised search index of node content for fast fulltext search.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Auto-increment primary key.',
+      ],
+      'nid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Node ID.',
+      ],
+      'title' => [
+        'type' => 'varchar',
+        'length' => 512,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node title.',
+      ],
+      'summary' => [
+        'type' => 'varchar',
+        'length' => 300,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'First 300 plain-text characters of the body field.',
+      ],
+      'tags' => [
+        'type' => 'varchar',
+        'length' => 1024,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Taxonomy term names joined by space.',
+      ],
+      'url' => [
+        'type' => 'varchar',
+        'length' => 512,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node URL alias or /node/{nid}.',
+      ],
+      'changed' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Node changed timestamp.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'nid' => ['nid'],
+    ],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function ssauto_install(): void {
+  // Add MySQL FULLTEXT indexes via raw SQL — the Schema API does not support
+  // FULLTEXT index types, so we must issue ALTER TABLE statements directly.
+  $db = \Drupal::database();
+
+  // FULLTEXT on title only — fast path for autocomplete queries.
+  try {
+    $db->query('ALTER TABLE {ssauto_index} ADD FULLTEXT INDEX ft_title (title)');
+  }
+  catch (\Exception $e) {
+    \Drupal::logger('ssauto')->warning('Could not add ft_title FULLTEXT index: @msg', ['@msg' => $e->getMessage()]);
+  }
+
+  // FULLTEXT on all searchable columns — used by the results page.
+  try {
+    $db->query('ALTER TABLE {ssauto_index} ADD FULLTEXT INDEX ft_full (title, summary, tags)');
+  }
+  catch (\Exception $e) {
+    \Drupal::logger('ssauto')->warning('Could not add ft_full FULLTEXT index: @msg', ['@msg' => $e->getMessage()]);
+  }
+
+  \Drupal::messenger()->addStatus(t('Smart Search Autocomplete installed. Run <code>drush ssauto:rebuild</code> to build the initial index.'));
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function ssauto_uninstall(): void {
+  \Drupal::cache()->invalidateTags(['ssauto_index']);
+}

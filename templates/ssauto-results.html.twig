@@ -1,0 +1,120 @@
+{#
+/**
+ * @file
+ * Template for the Smart Search results page (/smart-search).
+ *
+ * Available variables:
+ *   - keyword: The search query string.
+ *   - results: Array of result items, each with keys:
+ *       nid, title, url, summary, tags, score.
+ *   - total: Total number of matching results.
+ *   - page: Current zero-based page number.
+ *   - limit: Results per page.
+ */
+#}
+<div class="ssauto-results-page">
+
+  {# Page header #}
+  <header class="ssauto-results-header">
+    {% if keyword %}
+      <h1 class="ssauto-results-heading">
+        {{ 'Search results for <em>@keyword</em>'|t({'@keyword': keyword})|raw }}
+      </h1>
+      <p class="ssauto-results-meta">
+        {% if total == 0 %}
+          {{ 'No results found.'|t }}
+        {% elseif total == 1 %}
+          {{ '1 result'|t }}
+        {% else %}
+          {{ '@count results'|t({'@count': total}) }}
+        {% endif %}
+      </p>
+    {% else %}
+      <h1 class="ssauto-results-heading">{{ 'Search'|t }}</h1>
+    {% endif %}
+  </header>
+
+  {# Inline re-search form #}
+  <form class="ssauto-results-form" action="/smart-search" method="get" role="search">
+    <div class="ssauto-results-form__row">
+      <label class="visually-hidden" for="ssauto-results-input">{{ 'Search'|t }}</label>
+      <input
+        type="search"
+        id="ssauto-results-input"
+        name="q"
+        value="{{ keyword|e }}"
+        class="ssauto-results-form__input"
+        placeholder="{{ 'Enter search terms…'|t }}"
+        autocomplete="off"
+      />
+      <button type="submit" class="ssauto-results-form__submit">{{ 'Search'|t }}</button>
+    </div>
+  </form>
+
+  {# Results list #}
+  {% if results is not empty %}
+    <ol class="ssauto-results-list" start="{{ page * limit + 1 }}">
+      {% for item in results %}
+        <li class="ssauto-result-item">
+          <h2 class="ssauto-result-item__title">
+            <a href="{{ item.url }}" class="ssauto-result-item__link">{{ item.title }}</a>
+          </h2>
+          {% if item.summary %}
+            <p class="ssauto-result-item__summary">{{ item.summary }}</p>
+          {% endif %}
+          {% if item.tags %}
+            <p class="ssauto-result-item__tags">
+              <span class="ssauto-result-item__tags-label">{{ 'Tags:'|t }}</span>
+              {% set tagList = item.tags|split(' ') %}
+              {% for tag in tagList %}
+                <span class="ssauto-result-item__tag">{{ tag }}</span>
+              {% endfor %}
+            </p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+
+    {# Pagination #}
+    {% set prevPage = page - 1 %}
+    {% set nextPage = page + 1 %}
+    {% set hasNext = (page + 1) * limit < total %}
+    {% set hasPrev = page > 0 %}
+
+    {% if hasPrev or hasNext %}
+      <nav class="ssauto-pagination" aria-label="{{ 'Pagination'|t }}">
+        {% if hasPrev %}
+          <a class="ssauto-pagination__link ssauto-pagination__link--prev"
+             href="/smart-search?q={{ keyword|url_encode }}&page={{ prevPage }}"
+             rel="prev">
+            &larr; {{ 'Previous'|t }}
+          </a>
+        {% endif %}
+
+        <span class="ssauto-pagination__info">
+          {{ 'Page @current of @total'|t({
+            '@current': page + 1,
+            '@total': ((total - 1) // limit) + 1
+          }) }}
+        </span>
+
+        {% if hasNext %}
+          <a class="ssauto-pagination__link ssauto-pagination__link--next"
+             href="/smart-search?q={{ keyword|url_encode }}&page={{ nextPage }}"
+             rel="next">
+            {{ 'Next'|t }} &rarr;
+          </a>
+        {% endif %}
+      </nav>
+    {% endif %}
+
+  {% elseif keyword %}
+    {# Empty state #}
+    <div class="ssauto-no-results">
+      <p class="ssauto-no-results__message">
+        {{ 'No results found for <strong>@keyword</strong>. Try different or fewer keywords.'|t({'@keyword': keyword})|raw }}
+      </p>
+    </div>
+  {% endif %}
+
+</div>{# /.ssauto-results-page #}

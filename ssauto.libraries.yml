@@ -1,0 +1,12 @@
+ssauto-overlay:
+  version: '1.0.0'
+  css:
+    theme:
+      css/ssauto.css: {}
+  js:
+    js/ssauto.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/drupalSettings
+    - core/once

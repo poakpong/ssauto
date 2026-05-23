@@ -1,0 +1,15 @@
+services:
+  ssauto.index_service:
+    class: Drupal\ssauto\Service\SsautoIndexService
+    arguments:
+      - '@database'
+      - '@entity_type.manager'
+      - '@cache.default'
+
+  ssauto.commands:
+    class: Drupal\ssauto\Commands\SsautoCommands
+    arguments:
+      - '@ssauto.index_service'
+      - '@entity_type.manager'
+    tags:
+      - { name: drush.command }

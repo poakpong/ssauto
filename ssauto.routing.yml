@@ -1,0 +1,31 @@
+ssauto.results:
+  path: '/smart-search'
+  defaults:
+    _controller: '\Drupal\ssauto\Controller\SsautoResultsController::results'
+    _title: 'Search Results'
+  requirements:
+    _permission: 'access content'
+
+ssauto.redirect:
+  path: '/search'
+  defaults:
+    _controller: '\Drupal\ssauto\Controller\SsautoRedirectController::redirect'
+  requirements:
+    _permission: 'access content'
+
+ssauto.redirect_with_keys:
+  path: '/search/{keys}'
+  defaults:
+    _controller: '\Drupal\ssauto\Controller\SsautoRedirectController::redirectWithKeys'
+    keys: ''
+  requirements:
+    _permission: 'access content'
+
+ssauto.autocomplete:
+  path: '/api/ssauto/autocomplete'
+  defaults:
+    _controller: '\Drupal\ssauto\Controller\SsautoAutocompleteController::autocomplete'
+  requirements:
+    _permission: 'access content'
+  options:
+    no_cache: TRUE
