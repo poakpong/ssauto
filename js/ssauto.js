@@ -195,47 +195,49 @@
         });
 
         // -----------------------------------------------------------------------
-        // Auto-open when the theme reveals this block via its own nav toggle.
+        // -----------------------------------------------------------------------
+        // Theme-nav integration — single click to open overlay.
         //
-        // Problem: the trigger button lives inside a theme navigation region that
-        // starts collapsed (display:none / height:0). The first user click goes to
-        // the theme's toggle, which expands the region. Only then does the user see
-        // our trigger and click it — making it feel like 2 clicks.
+        // Problem: many themes place this block inside a collapsed search drawer
+        // (display:none / height:0). The user's first click hits the theme's own
+        // toggle icon (outside our block), which expands the drawer. Only then
+        // can they reach our trigger — resulting in 2 clicks to open search.
         //
-        // Fix: walk up the DOM from this wrapper and find the first hidden ancestor.
-        // Watch it for class/style changes. The moment the wrapper becomes visible
-        // (theme toggle fires) → open the overlay immediately, so it looks like the
-        // first click did everything.
+        // Solution (requires no theme class names):
+        //  1. Walk up from .ssauto-wrapper to find the nearest hidden ancestor.
+        //  2. Hide our trigger (it is trapped inside the collapsed container).
+        //  3. Intercept ANY click on the *visible* sibling area of that ancestor
+        //     (i.e. the theme's toggle icon) and open our overlay directly — so
+        //     the very first click on the theme's icon opens the ssauto overlay.
         // -----------------------------------------------------------------------
         (function () {
-          function isHidden(el) {
+          function isCollapsed(el) {
             if (!el || el === document.documentElement) { return false; }
             var s = window.getComputedStyle(el);
             return s.display === 'none' || s.visibility === 'hidden' || el.offsetHeight === 0;
           }
 
-          // Find nearest hidden ancestor of the wrapper.
+          // Walk up from the wrapper to find the nearest hidden ancestor.
           var hiddenAncestor = null;
           var node = wrapper.parentNode;
           while (node && node !== document.body) {
-            if (isHidden(node)) { hiddenAncestor = node; break; }
+            if (isCollapsed(node)) { hiddenAncestor = node; break; }
             node = node.parentNode;
           }
-          if (!hiddenAncestor) { return; } // wrapper already visible — nothing to do.
 
-          var observer = new MutationObserver(function () {
-            if (!isHidden(wrapper) && !isOpen) {
-              observer.disconnect();
-              openOverlay();
-            }
-          });
+          if (!hiddenAncestor) { return; } // Wrapper is already visible — trigger works normally.
 
-          // Observe the parent of the hidden ancestor for attribute/class changes
-          // (theme toggles typically add/remove a CSS class on the container).
-          observer.observe(hiddenAncestor.parentNode || document.body, {
-            attributes: true,
-            subtree: true,
-            attributeFilter: ['class', 'style'],
+          // Our trigger is unreachable inside the collapsed container; hide it.
+          $trigger.hide();
+
+          // Intercept clicks on the VISIBLE part of the container
+          // (any click that originates outside hiddenAncestor = theme's toggle).
+          $(hiddenAncestor.parentNode).on('click.ssauto-nav', function (e) {
+            // Ignore clicks that come from inside the collapsed container.
+            if ($(e.target).closest(hiddenAncestor).length) { return; }
+            // Ignore our own overlay / backdrop (they live at body level).
+            if ($(e.target).closest('.ssauto-overlay, .ssauto-backdrop').length) { return; }
+            isOpen ? closeOverlay() : openOverlay();
           });
         }());
 
