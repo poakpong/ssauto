@@ -49,6 +49,15 @@ final class SsautoResultsController extends ControllerBase {
       '#total'    => $data['total'],
       '#page'     => $page,
       '#limit'    => $limit,
+      '#attached' => [
+        'library'        => ['ssauto/ssauto-overlay'],
+        'drupalSettings' => [
+          'ssauto' => [
+            'autocompleteUrl' => '/api/ssauto/autocomplete',
+            'searchPageUrl'   => '/smart-search',
+          ],
+        ],
+      ],
       '#cache'    => [
         'tags'     => ['ssauto_index'],
         'contexts' => ['url.query_args'],
