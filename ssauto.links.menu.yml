@@ -1,0 +1,6 @@
+ssauto.settings:
+  title: 'Smart Search Autocomplete'
+  description: 'Configure autocomplete suggestions, results per page, and keyword settings.'
+  parent: system.admin_config_search
+  route_name: ssauto.settings
+  weight: 10

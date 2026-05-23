@@ -21,6 +21,14 @@ ssauto.redirect_with_keys:
   requirements:
     _permission: 'access content'
 
+ssauto.settings:
+  path: '/admin/config/search/ssauto'
+  defaults:
+    _form: '\Drupal\ssauto\Form\SsautoSettingsForm'
+    _title: 'Smart Search Autocomplete Settings'
+  requirements:
+    _permission: 'administer site configuration'
+
 ssauto.autocomplete:
   path: '/api/ssauto/autocomplete'
   defaults:

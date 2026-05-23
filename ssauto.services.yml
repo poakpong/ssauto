@@ -5,6 +5,7 @@ services:
       - '@database'
       - '@entity_type.manager'
       - '@cache.default'
+      - '@config.factory'
 
   ssauto.commands:
     class: Drupal\ssauto\Commands\SsautoCommands

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ssauto\Service;
 
 use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
@@ -17,6 +18,7 @@ final class SsautoIndexService {
     private readonly Connection $database,
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly CacheBackendInterface $cache,
+    private readonly ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -104,9 +106,13 @@ final class SsautoIndexService {
    *
    * @return array<int, array{nid: int, title: string, url: string}>
    */
-  public function autocomplete(string $keyword, int $limit = 8): array {
+  public function autocomplete(string $keyword, int $limit = 0): array {
+    $config  = $this->configFactory->get('ssauto.settings');
+    $limit   = $limit > 0 ? $limit : (int) $config->get('autocomplete_limit');
+    $minLen  = (int) $config->get('min_keyword_length');
+
     $keyword = trim($keyword);
-    if (mb_strlen($keyword) < 2) {
+    if (mb_strlen($keyword) < $minLen) {
       return [];
     }
 

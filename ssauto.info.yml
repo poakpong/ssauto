@@ -1,9 +1,10 @@
 name: 'Smart Search Autocomplete'
-version: '0.0.1'
+version: '1.0.0'
 type: module
 description: 'High-performance search system with autocomplete overlay UI, replacing Drupal core search. Optimized for 100,000 nodes.'
 package: Custom
 core_version_requirement: ^10 || ^11
+configure: ssauto.settings
 dependencies:
   - drupal:node
   - drupal:taxonomy
