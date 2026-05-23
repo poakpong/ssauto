@@ -101,5 +101,5 @@ function ssauto_install(): void {
  * Implements hook_uninstall().
  */
 function ssauto_uninstall(): void {
-  \Drupal::cache()->invalidateTags(['ssauto_index']);
+  \Drupal::service('cache_tags.invalidator')->invalidateTags(['ssauto_index']);
 }
