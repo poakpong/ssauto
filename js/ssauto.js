@@ -193,6 +193,52 @@
           var q = $input.val().trim();
           if (q) { window.location.href = searchPageUrl + '?q=' + encodeURIComponent(q); }
         });
+
+        // -----------------------------------------------------------------------
+        // Auto-open when the theme reveals this block via its own nav toggle.
+        //
+        // Problem: the trigger button lives inside a theme navigation region that
+        // starts collapsed (display:none / height:0). The first user click goes to
+        // the theme's toggle, which expands the region. Only then does the user see
+        // our trigger and click it — making it feel like 2 clicks.
+        //
+        // Fix: walk up the DOM from this wrapper and find the first hidden ancestor.
+        // Watch it for class/style changes. The moment the wrapper becomes visible
+        // (theme toggle fires) → open the overlay immediately, so it looks like the
+        // first click did everything.
+        // -----------------------------------------------------------------------
+        (function () {
+          function isHidden(el) {
+            if (!el || el === document.documentElement) { return false; }
+            var s = window.getComputedStyle(el);
+            return s.display === 'none' || s.visibility === 'hidden' || el.offsetHeight === 0;
+          }
+
+          // Find nearest hidden ancestor of the wrapper.
+          var hiddenAncestor = null;
+          var node = wrapper.parentNode;
+          while (node && node !== document.body) {
+            if (isHidden(node)) { hiddenAncestor = node; break; }
+            node = node.parentNode;
+          }
+          if (!hiddenAncestor) { return; } // wrapper already visible — nothing to do.
+
+          var observer = new MutationObserver(function () {
+            if (!isHidden(wrapper) && !isOpen) {
+              observer.disconnect();
+              openOverlay();
+            }
+          });
+
+          // Observe the parent of the hidden ancestor for attribute/class changes
+          // (theme toggles typically add/remove a CSS class on the container).
+          observer.observe(hiddenAncestor.parentNode || document.body, {
+            attributes: true,
+            subtree: true,
+            attributeFilter: ['class', 'style'],
+          });
+        }());
+
       });
     },
   };
