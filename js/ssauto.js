@@ -52,16 +52,29 @@
         var $submitBtn   = $wrapper.find('.ssauto-submit');
         var $suggestions = $wrapper.find('.ssauto-suggestions');
 
+        // Teleport overlay + backdrop to <body> so they escape any parent
+        // CSS transform / overflow that would clip position:fixed children.
+        $('body').append($backdrop).append($overlay);
+
         var isOpen       = false;
         var activeIndex  = -1;
         var currentItems = [];
         var debounceTimer = null;
         var fetch        = makeFetcher(autocompleteUrl);
 
+        // Keep overlay top aligned with Drupal toolbar (displace API).
+        function updateOverlayTop() {
+          var offset = parseInt($('body').css('padding-top') || 0, 10);
+          $overlay.css('top', offset > 0 ? offset + 'px' : '');
+        }
+        updateOverlayTop();
+        $(document).on('drupalViewportOffsetChange.ssauto', updateOverlayTop);
+
         // -----------------------------------------------------------------------
         // Open / close
         // -----------------------------------------------------------------------
         function openOverlay() {
+          updateOverlayTop();
           isOpen = true;
           $overlay.removeAttr('hidden').addClass('is-open');
           $trigger.addClass('is-active').attr('aria-expanded', 'true');

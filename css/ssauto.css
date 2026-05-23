@@ -97,6 +97,20 @@ body.ssauto-active .ssauto-backdrop {
   visibility: hidden;
 }
 
+/* --------------------------------------------------------------------------
+   Drupal admin toolbar offset — CSS fallback (JS updateOverlayTop() handles
+   the exact value at runtime via body padding-top from the displace module).
+   -------------------------------------------------------------------------- */
+body.toolbar-fixed .ssauto-overlay {
+  top: 39px; /* horizontal toolbar bar */
+}
+body.toolbar-fixed.toolbar-tray-open.toolbar-horizontal .ssauto-overlay {
+  top: 79px; /* horizontal bar + tray */
+}
+body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
+  top: 39px; /* vertical mode: only top bar */
+}
+
 .ssauto-overlay.is-open {
   transform: translateY(0);
   visibility: visible;
