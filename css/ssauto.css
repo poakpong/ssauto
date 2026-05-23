@@ -145,24 +145,25 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
    -------------------------------------------------------------------------- */
 .ssauto-close {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 36px;
-  height: 36px;
+  top: 0.9rem;
+  right: 0.9rem;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid var(--ssauto-border);
-  border-radius: 4px;
-  color: var(--ssauto-muted);
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
+  transition: background 0.2s, color 0.2s;
+  z-index: 1;
 }
 
 .ssauto-close:hover {
+  background: rgba(255, 255, 255, 0.28);
   color: var(--ssauto-accent);
-  border-color: var(--ssauto-accent);
 }
 
 /* --------------------------------------------------------------------------
@@ -176,7 +177,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
   margin: 0 0 1rem;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.35s ease 0.25s, transform 0.35s ease 0.25s;
+  transition: opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s;
 }
 
 .ssauto-overlay.is-open .ssauto-label {
@@ -195,7 +196,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
   padding-bottom: 0.75rem;
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity 0.35s ease 0.35s, transform 0.35s ease 0.35s,
+  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s,
               border-color 0.2s;
 }
 
@@ -265,7 +266,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
   padding: 0;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.3s ease 0.45s, transform 0.3s ease 0.45s;
+  transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
 }
 
 .ssauto-overlay.is-open .ssauto-suggestions {
@@ -361,7 +362,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
   margin-top: 1.5rem;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.3s ease 0.55s, transform 0.3s ease 0.55s;
+  transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
   color: var(--ssauto-muted);
   font-size: 0.75rem;
 }
@@ -535,8 +536,12 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
   background: #fff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .12);
   display: none;
-  position: relative;
-  z-index: 100;
+  /* Position absolutely below the search row */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 200;
 }
 
 .ssauto-results-ac-item {

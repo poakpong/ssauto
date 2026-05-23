@@ -79,7 +79,7 @@
           $overlay.removeAttr('hidden').addClass('is-open');
           $trigger.addClass('is-active').attr('aria-expanded', 'true');
           $('body').addClass('ssauto-active');
-          setTimeout(function () { $input.trigger('focus'); }, 350);
+          $input.trigger('focus');
         }
 
         function closeOverlay() {
@@ -154,7 +154,7 @@
         // -----------------------------------------------------------------------
         // Events
         // -----------------------------------------------------------------------
-        $trigger.on('click', function () { isOpen ? closeOverlay() : openOverlay(); });
+        $trigger.on('click', function (e) { e.stopPropagation(); isOpen ? closeOverlay() : openOverlay(); });
         $closeBtn.on('click', closeOverlay);
         $backdrop.on('click', closeOverlay);
 
@@ -208,7 +208,9 @@
       once('ssauto-results-ac', '.ssauto-results-form__input', context).forEach(function (input) {
         var $input    = $(input);
         var $row      = $input.closest('.ssauto-results-form__row');
-        var $dropdown = $('<ul class="ssauto-results-ac-dropdown" role="listbox"></ul>').insertAfter($row);
+        // Append dropdown inside the row so it can use position:absolute top:100%.
+        var $dropdown = $('<ul class="ssauto-results-ac-dropdown" role="listbox"></ul>');
+        $row.css('position', 'relative').append($dropdown);
         var debounceTimer = null;
         var fetch     = makeFetcher(autocompleteUrl);
 
