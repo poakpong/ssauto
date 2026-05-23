@@ -9,7 +9,7 @@ ssauto.results:
 ssauto.redirect:
   path: '/search'
   defaults:
-    _controller: '\Drupal\ssauto\Controller\SsautoRedirectController::redirect'
+    _controller: '\Drupal\ssauto\Controller\SsautoRedirectController::legacyRedirect'
   requirements:
     _permission: 'access content'
 

@@ -16,7 +16,7 @@ final class SsautoRedirectController extends ControllerBase {
   /**
    * Redirects /search?q={q} → /smart-search?q={q}.
    */
-  public function redirect(Request $request): RedirectResponse {
+  public function legacyRedirect(Request $request): RedirectResponse {
     $q = (string) $request->query->get('q', '');
     $destination = '/smart-search' . ($q !== '' ? '?q=' . rawurlencode($q) : '');
     return new RedirectResponse($destination, 301);
