@@ -11,7 +11,7 @@ use Drush\Commands\DrushCommands;
 /**
  * Drush commands for the Smart Search Autocomplete module.
  */
-final class SsautoCommands extends DrushCommands {
+class SsautoCommands extends DrushCommands {
 
   public function __construct(
     private readonly SsautoIndexService $indexService,

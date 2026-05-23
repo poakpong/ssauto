@@ -7,10 +7,3 @@ services:
       - '@cache.default'
       - '@config.factory'
 
-  ssauto.commands:
-    class: Drupal\ssauto\Commands\SsautoCommands
-    arguments:
-      - '@ssauto.index_service'
-      - '@entity_type.manager'
-    tags:
-      - { name: drush.command }
