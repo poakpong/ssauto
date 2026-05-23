@@ -1,5 +1,5 @@
 name: 'Smart Search Autocomplete'
-version: '1.0.4'
+version: '1.0.5'
 type: module
 description: 'High-performance search system with autocomplete overlay UI, replacing Drupal core search. Optimized for 100,000 nodes.'
 package: Custom

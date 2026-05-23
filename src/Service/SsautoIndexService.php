@@ -79,8 +79,9 @@ final class SsautoIndexService {
         $url = $alias ?: $internalPath;
 
         $this->database->merge('ssauto_index')
-          ->key(['nid' => $nid])
+          ->key('nid')
           ->fields([
+            'nid'     => $nid,
             'title'   => mb_substr((string) $node->label(), 0, 512),
             'summary' => $summary,
             'tags'    => mb_substr($tags, 0, 1024),
