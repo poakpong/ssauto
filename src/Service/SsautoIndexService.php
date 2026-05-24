@@ -190,10 +190,12 @@ final class SsautoIndexService {
    */
   private function runAutocompleteFulltext(string $keyword, int $limit): array {
     try {
+      // Search across title, summary AND tags so results aren't limited to
+      // title-only matches. The ft_full index (title, summary, tags) is used.
       $rows = $this->database->query(
         "SELECT nid, title, url, created
          FROM {ssauto_index}
-         WHERE MATCH(title) AGAINST (:kw IN BOOLEAN MODE)
+         WHERE MATCH(title, summary, tags) AGAINST (:kw IN BOOLEAN MODE)
          ORDER BY created DESC
          LIMIT :limit",
         [':kw' => $this->buildBooleanKeyword($keyword), ':limit' => $limit]
@@ -221,15 +223,15 @@ final class SsautoIndexService {
    */
   private function runAutocompleteLike(string $keyword, int $limit): array {
     try {
-      // Each word must appear in the title (AND logic, title-only for speed).
-      $query = $this->database->select('ssauto_index', 's')
+      // Each word must match somewhere in title, summary, or tags (AND logic).
+      [$where, $params] = $this->buildLikeCondition($keyword);
+      $rows = $this->database->select('ssauto_index', 's')
         ->fields('s', ['nid', 'title', 'url', 'created'])
+        ->where($where, $params)
         ->orderBy('created', 'DESC')
-        ->range(0, $limit);
-      foreach (preg_split('/\s+/', trim($keyword), -1, PREG_SPLIT_NO_EMPTY) as $word) {
-        $query->condition('title', '%' . $this->database->escapeLike($word) . '%', 'LIKE');
-      }
-      $rows = $query->execute()->fetchAll();
+        ->range(0, $limit)
+        ->execute()
+        ->fetchAll();
 
       return array_map(
         fn($row) => [

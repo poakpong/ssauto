@@ -29,8 +29,16 @@
 
   function highlightKeyword(text, keyword) {
     if (!keyword) { return Drupal.checkPlain(text); }
-    var escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return Drupal.checkPlain(text).replace(new RegExp('(' + escaped + ')', 'gi'), '<mark>$1</mark>');
+    // Highlight each word independently so a title that only partially matches
+    // the query (the other words matched in body/summary) still shows the
+    // words that ARE present highlighted, and non-matching titles show as-is.
+    var result = Drupal.checkPlain(text);
+    keyword.trim().split(/\s+/).forEach(function (word) {
+      if (!word) { return; }
+      var escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(new RegExp('(' + escaped + ')', 'gi'), '<mark>$1</mark>');
+    });
+    return result;
   }
 
   // ===========================================================================
