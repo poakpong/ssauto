@@ -35,16 +35,8 @@ final class SsautoOverlayBlock extends BlockBase {
       ],
       '#cache' => [
         'max-age' => Cache::PERMANENT,
-        'tags'    => ['ssauto_index'],
       ],
     ];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getCacheTags(): array {
-    return Cache::mergeTags(parent::getCacheTags(), ['ssauto_index']);
   }
 
 }

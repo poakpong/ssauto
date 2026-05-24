@@ -9,6 +9,7 @@ use Drupal\Core\Cache\CacheTagsInvalidatorInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Session\AnonymousUserSession;
 use Drupal\path_alias\AliasManagerInterface;
 
 /**
@@ -42,6 +43,7 @@ final class SsautoIndexService {
     }
 
     $count = 0;
+    $anonymousUser = new AnonymousUserSession();
     $chunks = array_chunk($nids, 500);
 
     foreach ($chunks as $chunk) {
@@ -53,6 +55,16 @@ final class SsautoIndexService {
         }
 
         $nid = (int) $node->id();
+
+        // Skip access-restricted content — anonymous users must be able to
+        // view the node, otherwise it must not appear in search results.
+        // Also remove any previously indexed row so stale entries are purged.
+        if (!$node->access('view', $anonymousUser)) {
+          $this->database->delete('ssauto_index')
+            ->condition('nid', $nid)
+            ->execute();
+          continue;
+        }
 
         // Build plain-text summary from body field (500 chars for better recall).
         $summary = '';
@@ -118,7 +130,8 @@ final class SsautoIndexService {
     $limit   = $limit > 0 ? $limit : ((int) $config->get('autocomplete_limit') ?: 8);
     $minLen  = (int) $config->get('min_keyword_length') ?: 2;
 
-    $keyword = trim($keyword);
+    // Cap keyword length to prevent resource exhaustion from oversized queries.
+    $keyword = mb_substr(trim($keyword), 0, 100);
     if (mb_strlen($keyword) < $minLen) {
       return [];
     }
@@ -261,10 +274,9 @@ final class SsautoIndexService {
   /**
    * Runs the full FULLTEXT search using ft_full (title, summary, tags).
    *
-   * SQL_CALC_FOUND_ROWS lets MySQL count total matches in the same FULLTEXT
-   * scan as the paginated fetch, eliminating the separate COUNT(*) query.
-   * MATCH() in SELECT and WHERE with identical arguments is computed once by
-   * the optimizer. ft_title is no longer needed.
+   * Issues a COUNT(*) query first, then a paginated SELECT — avoids the
+   * deprecated SQL_CALC_FOUND_ROWS. Falls back to LIKE search when FULLTEXT
+   * returns no results (e.g. short keywords below ft_min_word_len).
    *
    * @return array{items: list<array{nid: int, title: string, url: string, summary: string, tags: string, created: int, score: float}>, total: int}
    */
@@ -272,11 +284,23 @@ final class SsautoIndexService {
     try {
       $boolKeyword = $this->buildBooleanKeyword($keyword);
 
-      // Single query: fetch rows + total count in one FULLTEXT scan.
-      // SQL_CALC_FOUND_ROWS is deprecated in MySQL 8.0.17+ but remains
-      // functional; MariaDB supports it without restriction.
+      // COUNT query first — avoids deprecated SQL_CALC_FOUND_ROWS (removed
+      // in MySQL 8.0.17+ and unsupported on some MariaDB configurations).
+      // The FULLTEXT optimizer evaluates MATCH() in both queries independently,
+      // but the index scan cost is negligible for typical result set sizes.
+      $total = (int) $this->database->query(
+        "SELECT COUNT(*) FROM {ssauto_index}
+         WHERE MATCH(title, summary, tags) AGAINST (:kw IN BOOLEAN MODE)",
+        [':kw' => $boolKeyword]
+      )->fetchField();
+
+      if ($total === 0) {
+        // FULLTEXT returned nothing — try LIKE fallback before giving up.
+        return $this->runSearchLike($keyword, $limit, $offset);
+      }
+
       $rows = $this->database->query(
-        "SELECT SQL_CALC_FOUND_ROWS nid, title, url, summary, tags, created,
+        "SELECT nid, title, url, summary, tags, created,
                 MATCH(title, summary, tags) AGAINST (:kw IN BOOLEAN MODE) AS score
          FROM {ssauto_index}
          WHERE MATCH(title, summary, tags) AGAINST (:kw2 IN BOOLEAN MODE)
@@ -289,13 +313,6 @@ final class SsautoIndexService {
           ':offset' => $offset,
         ]
       )->fetchAll();
-
-      $total = (int) $this->database->query("SELECT FOUND_ROWS()")->fetchField();
-
-      if ($total === 0) {
-        // FULLTEXT returned nothing — try LIKE fallback before giving up.
-        return $this->runSearchLike($keyword, $limit, $offset);
-      }
 
       $items = array_map(
         fn($row) => [
@@ -415,10 +432,13 @@ final class SsautoIndexService {
    */
   public function getUnindexedCount(): int {
     try {
+      // node_field_data holds status/changed per-translation; default_langcode
+      // ensures we match only the canonical (default) translation row.
       return (int) $this->database->query(
-        "SELECT COUNT(*) FROM {node} n
+        "SELECT COUNT(*) FROM {node_field_data} n
          LEFT JOIN {ssauto_index} si ON n.nid = si.nid
-         WHERE n.status = 1 AND (si.nid IS NULL OR n.changed > si.changed)"
+         WHERE n.status = 1 AND n.default_langcode = 1
+           AND (si.nid IS NULL OR n.changed > si.changed)"
       )->fetchField();
     }
     catch (\Exception) {
@@ -432,9 +452,10 @@ final class SsautoIndexService {
   public function indexPending(int $batchSize): int {
     try {
       $nids = $this->database->query(
-        "SELECT n.nid FROM {node} n
+        "SELECT n.nid FROM {node_field_data} n
          LEFT JOIN {ssauto_index} si ON n.nid = si.nid
-         WHERE n.status = 1 AND (si.nid IS NULL OR n.changed > si.changed)
+         WHERE n.status = 1 AND n.default_langcode = 1
+           AND (si.nid IS NULL OR n.changed > si.changed)
          LIMIT :limit",
         [':limit' => $batchSize]
       )->fetchCol();
