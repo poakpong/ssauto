@@ -211,10 +211,17 @@
         //     the very first click on the theme's icon opens the ssauto overlay.
         // -----------------------------------------------------------------------
         (function () {
+          // Detect hidden/collapsed elements regardless of which CSS technique the
+          // theme uses: display:none, visibility:hidden, height/offsetHeight=0,
+          // opacity:0, OR pointer-events:none (common in modern slide-in drawers).
           function isCollapsed(el) {
             if (!el || el === document.documentElement) { return false; }
             var s = window.getComputedStyle(el);
-            return s.display === 'none' || s.visibility === 'hidden' || el.offsetHeight === 0;
+            return s.display        === 'none'
+                || s.visibility     === 'hidden'
+                || el.offsetHeight  === 0
+                || parseFloat(s.opacity) === 0
+                || s.pointerEvents  === 'none';
           }
 
           // Walk up from the wrapper to find the nearest hidden ancestor.
@@ -228,17 +235,20 @@
           if (!hiddenAncestor) { return; } // Wrapper is already visible — trigger works normally.
 
           // Our trigger is unreachable inside the collapsed container; hide it.
+          // This also prevents the stray "×" icon that appears when openOverlay()
+          // adds is-active to the still-visible trigger button.
           $trigger.hide();
 
-          // Intercept clicks on the VISIBLE part of the container
-          // (any click that originates outside hiddenAncestor = theme's toggle).
-          $(hiddenAncestor.parentNode).on('click.ssauto-nav', function (e) {
+          // Intercept clicks on the VISIBLE part of the container using the
+          // CAPTURE phase so we fire before the theme's own handler — even if the
+          // theme calls stopPropagation() in its bubble-phase handler.
+          hiddenAncestor.parentNode.addEventListener('click', function (e) {
             // Ignore clicks that come from inside the collapsed container.
             if ($(e.target).closest(hiddenAncestor).length) { return; }
-            // Ignore our own overlay / backdrop (they live at body level).
+            // Ignore our own overlay / backdrop (teleported to body level).
             if ($(e.target).closest('.ssauto-overlay, .ssauto-backdrop').length) { return; }
             isOpen ? closeOverlay() : openOverlay();
-          });
+          }, true /* capture: fires before theme's stopPropagation */);
         }());
 
       });
