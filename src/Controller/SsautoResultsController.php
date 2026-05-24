@@ -42,6 +42,16 @@ final class SsautoResultsController extends ControllerBase {
       $data = $this->indexService->search($keyword, $limit, $offset);
     }
 
+    // Pre-format created timestamps so the Twig template can render them
+    // directly without relying on the |date filter's integer-parsing behaviour.
+    $dateFormatter = \Drupal::service('date.formatter');
+    foreach ($data['items'] as &$item) {
+      $item['created_date'] = !empty($item['created'])
+        ? $dateFormatter->format((int) $item['created'], 'custom', 'j M Y')
+        : '';
+    }
+    unset($item);
+
     return [
       '#theme'    => 'ssauto_results',
       '#keyword'  => $keyword,

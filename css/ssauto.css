@@ -430,7 +430,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
    -------------------------------------------------------------------------- */
 .ssauto-results-page {
   max-width: 820px;
-  margin: 2rem auto;
+  margin: 2rem auto 20rem auto;
   padding: 0 1.5rem;
 }
 

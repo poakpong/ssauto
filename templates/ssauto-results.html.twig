@@ -6,7 +6,7 @@
  * Available variables:
  *   - keyword: The search query string.
  *   - results: Array of result items, each with keys:
- *       nid, title, url, summary, tags, created, score.
+ *       nid, title, url, summary, tags, created, created_date, score.
  *   - total: Total number of matching results.
  *   - page: Current zero-based page number.
  *   - limit: Results per page.
@@ -59,10 +59,8 @@
           <h2 class="ssauto-result-item__title">
             <a href="{{ item.url }}" class="ssauto-result-item__link">{{ item.title }}</a>
           </h2>
-          {% if item.created %}
-            <time class="ssauto-result-item__date" datetime="{{ item.created|date('Y-m-d') }}">
-              {{- item.created|date('d M Y') -}}
-            </time>
+          {% if item.created_date %}
+            <time class="ssauto-result-item__date" datetime="{{ item.created|date('Y-m-d') }}">{{ item.created_date }}</time>
           {% endif %}
           {% if item.summary %}
             <p class="ssauto-result-item__summary">{{ item.summary }}</p>
