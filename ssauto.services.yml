@@ -6,4 +6,6 @@ services:
       - '@entity_type.manager'
       - '@cache.default'
       - '@config.factory'
+      - '@path_alias.manager'
+      - '@cache_tags.invalidator'
 

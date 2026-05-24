@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Drupal\ssauto\Form;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Database\Connection;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Admin settings form for Smart Search Autocomplete.
@@ -16,6 +19,26 @@ final class SsautoSettingsForm extends ConfigFormBase {
    * Config object name.
    */
   const CONFIG_NAME = 'ssauto.settings';
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __construct(
+    ConfigFactoryInterface $config_factory,
+    private readonly Connection $database,
+  ) {
+    parent::__construct($config_factory);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container): static {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('database'),
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -179,7 +202,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
    */
   private function getIndexedCount(): int {
     try {
-      return (int) \Drupal::database()
+      return (int) $this->database
         ->select('ssauto_index', 's')
         ->countQuery()
         ->execute()
@@ -195,7 +218,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
    */
   private function getTotalPublishedCount(): int {
     try {
-      return (int) \Drupal::entityTypeManager()
+      return (int) $this->entityTypeManager()
         ->getStorage('node')
         ->getQuery()
         ->condition('status', 1)

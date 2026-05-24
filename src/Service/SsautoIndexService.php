@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Drupal\ssauto\Service;
 
 use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Cache\CacheTagsInvalidatorInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\path_alias\AliasManagerInterface;
 
 /**
  * Provides indexing, autocomplete, and search capabilities for ssauto.
@@ -19,6 +21,8 @@ final class SsautoIndexService {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly CacheBackendInterface $cache,
     private readonly ConfigFactoryInterface $configFactory,
+    private readonly AliasManagerInterface $aliasManager,
+    private readonly CacheTagsInvalidatorInterface $cacheTagsInvalidator,
   ) {}
 
   /**
@@ -28,7 +32,6 @@ final class SsautoIndexService {
    */
   public function buildIndex(array $nids = []): int {
     $nodeStorage = $this->entityTypeManager->getStorage('node');
-    $aliasManager = \Drupal::service('path_alias.manager');
 
     if (empty($nids)) {
       $nids = $nodeStorage->getQuery()
@@ -51,11 +54,11 @@ final class SsautoIndexService {
 
         $nid = (int) $node->id();
 
-        // Build plain-text summary from body field.
+        // Build plain-text summary from body field (500 chars for better recall).
         $summary = '';
         if ($node->hasField('body') && !$node->get('body')->isEmpty()) {
           $bodyValue = $node->get('body')->value ?? '';
-          $summary = mb_substr(strip_tags($bodyValue), 0, 300);
+          $summary = mb_substr(strip_tags($bodyValue), 0, 500);
         }
 
         // Collect taxonomy tag names from field_tags.
@@ -71,7 +74,7 @@ final class SsautoIndexService {
         // Resolve URL alias.
         $internalPath = '/node/' . $nid;
         try {
-          $alias = $aliasManager->getAliasByPath($internalPath);
+          $alias = $this->aliasManager->getAliasByPath($internalPath);
         }
         catch (\Exception) {
           $alias = $internalPath;
@@ -103,9 +106,12 @@ final class SsautoIndexService {
   }
 
   /**
-   * Returns autocomplete suggestions for a keyword (title FULLTEXT only).
+   * Returns autocomplete suggestions for a keyword.
    *
-   * @return array<int, array{nid: int, title: string, url: string}>
+   * Searches title, summary, and tags via ft_full FULLTEXT index.
+   * Results are sorted newest-first (created DESC).
+   *
+   * @return array<int, array{nid: int, title: string, url: string, created: int}>
    */
   public function autocomplete(string $keyword, int $limit = 0): array {
     $config  = $this->configFactory->get('ssauto.settings');
@@ -117,7 +123,9 @@ final class SsautoIndexService {
       return [];
     }
 
-    $cacheKey = 'ssauto:ac:' . md5(mb_substr(strtolower($keyword), 0, 9));
+    // Use full keyword for the cache key — truncating caused collisions when
+    // different multi-word queries shared the same first N characters.
+    $cacheKey = 'ssauto:ac:' . md5(strtolower($keyword));
     $cacheTtl = mb_strlen($keyword) <= 4 ? 3600 : 300;
 
     $cached = $this->cache->get($cacheKey);
@@ -176,7 +184,7 @@ final class SsautoIndexService {
    * Invalidates all ssauto cache entries via cache tag.
    */
   public function invalidateCache(): void {
-    \Drupal::service('cache_tags.invalidator')->invalidateTags(['ssauto_index']);
+    $this->cacheTagsInvalidator->invalidateTags(['ssauto_index']);
   }
 
   // ---------------------------------------------------------------------------
@@ -184,9 +192,11 @@ final class SsautoIndexService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Runs a FULLTEXT search on the title column only (autocomplete fast-path).
+   * Runs a FULLTEXT search across title, summary, and tags for autocomplete.
    *
-   * @return array<int, array{nid: int, title: string, url: string}>
+   * Uses the ft_full index. Results are sorted newest-first (created DESC).
+   *
+   * @return array<int, array{nid: int, title: string, url: string, created: int}>
    */
   private function runAutocompleteFulltext(string $keyword, int $limit): array {
     try {
@@ -249,43 +259,43 @@ final class SsautoIndexService {
   }
 
   /**
-   * Runs the full FULLTEXT search with title-boost scoring.
+   * Runs the full FULLTEXT search using ft_full (title, summary, tags).
    *
-   * @return array{items: list<array{nid: int, title: string, url: string, summary: string, tags: string, score: float}>, total: int}
+   * SQL_CALC_FOUND_ROWS lets MySQL count total matches in the same FULLTEXT
+   * scan as the paginated fetch, eliminating the separate COUNT(*) query.
+   * MATCH() in SELECT and WHERE with identical arguments is computed once by
+   * the optimizer. ft_title is no longer needed.
+   *
+   * @return array{items: list<array{nid: int, title: string, url: string, summary: string, tags: string, created: int, score: float}>, total: int}
    */
   private function runSearch(string $keyword, int $limit, int $offset): array {
     try {
       $boolKeyword = $this->buildBooleanKeyword($keyword);
 
-      // Total count query.
-      $total = (int) $this->database->query(
-        "SELECT COUNT(*) FROM {ssauto_index}
-         WHERE MATCH(title, summary, tags) AGAINST (:kw IN BOOLEAN MODE)",
-        [':kw' => $boolKeyword]
-      )->fetchField();
-
-      if ($total === 0) {
-        // FULLTEXT returned nothing — try LIKE fallback before giving up.
-        return $this->runSearchLike($keyword, $limit, $offset);
-      }
-
-      // Scored results: title match weighted 3× for relevance boost.
+      // Single query: fetch rows + total count in one FULLTEXT scan.
+      // SQL_CALC_FOUND_ROWS is deprecated in MySQL 8.0.17+ but remains
+      // functional; MariaDB supports it without restriction.
       $rows = $this->database->query(
-        "SELECT nid, title, url, summary, tags, created,
-                (MATCH(title) AGAINST (:kw IN BOOLEAN MODE) * 3
-                 + MATCH(title, summary, tags) AGAINST (:kw2 IN BOOLEAN MODE)) AS score
+        "SELECT SQL_CALC_FOUND_ROWS nid, title, url, summary, tags, created,
+                MATCH(title, summary, tags) AGAINST (:kw IN BOOLEAN MODE) AS score
          FROM {ssauto_index}
-         WHERE MATCH(title, summary, tags) AGAINST (:kw3 IN BOOLEAN MODE)
+         WHERE MATCH(title, summary, tags) AGAINST (:kw2 IN BOOLEAN MODE)
          ORDER BY created DESC, score DESC
          LIMIT :limit OFFSET :offset",
         [
           ':kw'     => $boolKeyword,
           ':kw2'    => $boolKeyword,
-          ':kw3'    => $boolKeyword,
           ':limit'  => $limit,
           ':offset' => $offset,
         ]
       )->fetchAll();
+
+      $total = (int) $this->database->query("SELECT FOUND_ROWS()")->fetchField();
+
+      if ($total === 0) {
+        // FULLTEXT returned nothing — try LIKE fallback before giving up.
+        return $this->runSearchLike($keyword, $limit, $offset);
+      }
 
       $items = array_map(
         fn($row) => [

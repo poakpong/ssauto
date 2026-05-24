@@ -35,10 +35,10 @@ function ssauto_schema(): array {
       ],
       'summary' => [
         'type' => 'varchar',
-        'length' => 300,
+        'length' => 500,
         'not null' => TRUE,
         'default' => '',
-        'description' => 'First 300 plain-text characters of the body field.',
+        'description' => 'First 500 plain-text characters of the body field.',
       ],
       'tags' => [
         'type' => 'varchar',
@@ -84,15 +84,7 @@ function ssauto_install(): void {
   // FULLTEXT index types, so we must issue ALTER TABLE statements directly.
   $db = \Drupal::database();
 
-  // FULLTEXT on title only — fast path for autocomplete queries.
-  try {
-    $db->query('ALTER TABLE {ssauto_index} ADD FULLTEXT INDEX ft_title (title)');
-  }
-  catch (\Exception $e) {
-    \Drupal::logger('ssauto')->warning('Could not add ft_title FULLTEXT index: @msg', ['@msg' => $e->getMessage()]);
-  }
-
-  // FULLTEXT on all searchable columns — used by the results page.
+  // FULLTEXT on all searchable columns — used by autocomplete and search.
   try {
     $db->query('ALTER TABLE {ssauto_index} ADD FULLTEXT INDEX ft_full (title, summary, tags)');
   }
@@ -109,6 +101,50 @@ function ssauto_install(): void {
 function ssauto_uninstall(): void {
   \Drupal::configFactory()->getEditable('ssauto.settings')->delete();
   \Drupal::service('cache_tags.invalidator')->invalidateTags(['ssauto_index']);
+}
+
+/**
+ * Drops unused ft_title index, adds idx_created, expands summary to 500 chars.
+ */
+function ssauto_update_8003(): string {
+  $db     = \Drupal::database();
+  $schema = $db->schema();
+  $log    = [];
+
+  // Drop the ft_title FULLTEXT index — autocomplete now uses ft_full
+  // (title, summary, tags). ft_title is no longer referenced anywhere.
+  try {
+    $db->query('ALTER TABLE {ssauto_index} DROP INDEX ft_title');
+    $log[] = 'Dropped ft_title FULLTEXT index.';
+  }
+  catch (\Exception $e) {
+    $log[] = 'ft_title index not found or already dropped — skipped.';
+  }
+
+  // Add a regular B-tree index on created for ORDER BY created DESC
+  // used by the LIKE fallback search path.
+  try {
+    $db->query('ALTER TABLE {ssauto_index} ADD INDEX idx_created (created)');
+    $log[] = 'Added idx_created index.';
+  }
+  catch (\Exception $e) {
+    $log[] = 'idx_created index already exists — skipped.';
+  }
+
+  // Expand summary column from varchar(300) to varchar(500) to improve
+  // search recall for long-form content.
+  if ($schema->fieldExists('ssauto_index', 'summary')) {
+    $schema->changeField('ssauto_index', 'summary', 'summary', [
+      'type'        => 'varchar',
+      'length'      => 500,
+      'not null'    => TRUE,
+      'default'     => '',
+      'description' => 'First 500 plain-text characters of the body field.',
+    ]);
+    $log[] = 'Expanded summary column to varchar(500).';
+  }
+
+  return implode(' ', $log);
 }
 
 /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\ssauto\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\ssauto\Service\SsautoIndexService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +17,7 @@ final class SsautoResultsController extends ControllerBase {
 
   public function __construct(
     private readonly SsautoIndexService $indexService,
+    private readonly DateFormatterInterface $dateFormatter,
   ) {}
 
   /**
@@ -24,6 +26,7 @@ final class SsautoResultsController extends ControllerBase {
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('ssauto.index_service'),
+      $container->get('date.formatter'),
     );
   }
 
@@ -44,10 +47,9 @@ final class SsautoResultsController extends ControllerBase {
 
     // Pre-format created timestamps so the Twig template can render them
     // directly without relying on the |date filter's integer-parsing behaviour.
-    $dateFormatter = \Drupal::service('date.formatter');
     foreach ($data['items'] as &$item) {
       $item['created_date'] = !empty($item['created'])
-        ? $dateFormatter->format((int) $item['created'], 'custom', 'j M Y')
+        ? $this->dateFormatter->format((int) $item['created'], 'custom', 'j M Y')
         : '';
     }
     unset($item);
