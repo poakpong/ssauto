@@ -86,6 +86,7 @@ final class SsautoIndexService {
             'summary' => $summary,
             'tags'    => mb_substr($tags, 0, 1024),
             'url'     => mb_substr($url, 0, 512),
+            'created' => (int) $node->getCreatedTime(),
             'changed' => (int) $node->getChangedTime(),
           ])
           ->execute();
@@ -255,12 +256,12 @@ final class SsautoIndexService {
 
       // Scored results: title match weighted 3× for relevance boost.
       $rows = $this->database->query(
-        "SELECT nid, title, url, summary, tags,
+        "SELECT nid, title, url, summary, tags, created,
                 (MATCH(title) AGAINST (:kw IN BOOLEAN MODE) * 3
                  + MATCH(title, summary, tags) AGAINST (:kw2 IN BOOLEAN MODE)) AS score
          FROM {ssauto_index}
          WHERE MATCH(title, summary, tags) AGAINST (:kw3 IN BOOLEAN MODE)
-         ORDER BY score DESC
+         ORDER BY created DESC, score DESC
          LIMIT :limit OFFSET :offset",
         [
           ':kw'     => $boolKeyword,
@@ -278,6 +279,7 @@ final class SsautoIndexService {
           'url'     => $row->url,
           'summary' => $row->summary,
           'tags'    => $row->tags,
+          'created' => (int) $row->created,
           'score'   => (float) $row->score,
         ],
         $rows
@@ -316,13 +318,13 @@ final class SsautoIndexService {
       }
 
       $rows = $this->database->select('ssauto_index', 's')
-        ->fields('s', ['nid', 'title', 'url', 'summary', 'tags'])
+        ->fields('s', ['nid', 'title', 'url', 'summary', 'tags', 'created'])
         ->where('title LIKE :like OR summary LIKE :like2 OR tags LIKE :like3', [
           ':like'  => $like,
           ':like2' => $like,
           ':like3' => $like,
         ])
-        ->orderBy('changed', 'DESC')
+        ->orderBy('created', 'DESC')
         ->range($offset, $limit)
         ->execute()
         ->fetchAll();
@@ -334,6 +336,7 @@ final class SsautoIndexService {
           'url'     => $row->url,
           'summary' => $row->summary,
           'tags'    => $row->tags,
+          'created' => (int) $row->created,
           'score'   => 0.0,
         ],
         $rows

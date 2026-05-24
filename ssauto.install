@@ -54,6 +54,12 @@ function ssauto_schema(): array {
         'default' => '',
         'description' => 'Node URL alias or /node/{nid}.',
       ],
+      'created' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Node created (published) timestamp.',
+      ],
       'changed' => [
         'type' => 'int',
         'not null' => TRUE,
@@ -103,6 +109,34 @@ function ssauto_install(): void {
 function ssauto_uninstall(): void {
   \Drupal::configFactory()->getEditable('ssauto.settings')->delete();
   \Drupal::service('cache_tags.invalidator')->invalidateTags(['ssauto_index']);
+}
+
+/**
+ * Adds the created column to ssauto_index for existing installations.
+ */
+function ssauto_update_8002(): string {
+  $db     = \Drupal::database();
+  $schema = $db->schema();
+
+  if (!$schema->fieldExists('ssauto_index', 'created')) {
+    $schema->addField('ssauto_index', 'created', [
+      'type'        => 'int',
+      'not null'    => TRUE,
+      'default'     => 0,
+      'description' => 'Node created (published) timestamp.',
+    ]);
+
+    // Backfill from node_field_data using the default translation row.
+    $db->query(
+      "UPDATE {ssauto_index} si
+       INNER JOIN {node_field_data} n ON si.nid = n.nid AND n.default_langcode = 1
+       SET si.created = n.created"
+    );
+
+    return 'Added created column to ssauto_index and backfilled from node_field_data.';
+  }
+
+  return 'Column created already exists in ssauto_index — skipped.';
 }
 
 /**

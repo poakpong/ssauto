@@ -446,7 +446,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
 }
 
 .ssauto-results-form {
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
 }
 
 .ssauto-results-form__row {
@@ -497,6 +497,14 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
 .ssauto-result-item__link:hover {
   text-decoration: underline;
   color: #1a1aff;
+}
+
+.ssauto-result-item__date {
+  display: block;
+  font-size: 0.78rem;
+  color: #999;
+  margin: 0.15rem 0 0.35rem;
+  font-style: normal;
 }
 
 .ssauto-result-item__summary {
