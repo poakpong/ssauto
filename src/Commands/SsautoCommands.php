@@ -40,12 +40,24 @@ class SsautoCommands extends DrushCommands {
   /**
    * Rebuilds the ssauto search index for all published nodes.
    *
+   * Drush runs as CLI so there is no HTTP timeout, but very large sites
+   * (10 000+ nodes) can exhaust PHP memory with large batches. Use a
+   * smaller --batch-size to trade speed for lower memory usage, or a
+   * larger one to finish faster on servers with plenty of RAM.
+   *
    * @command ssauto:rebuild
    * @aliases ssr
+   * @option batch-size Number of nodes loaded and indexed per batch. Lower
+   *   values use less memory; higher values are faster. Default: 500.
    * @usage drush ssauto:rebuild
-   *   Rebuilds the full index in chunks of 500.
+   *   Rebuild the full index using the default batch size of 500.
+   * @usage drush ssauto:rebuild --batch-size=200
+   *   Rebuild using smaller batches to reduce memory pressure.
+   * @usage drush ssauto:rebuild --batch-size=2000
+   *   Rebuild using larger batches for faster throughput on high-RAM servers.
    */
-  public function rebuild(): void {
+  public function rebuild(array $options = ['batch-size' => 500]): void {
+    $batchSize  = max(1, (int) $options['batch-size']);
     $nodeStorage = $this->entityTypeManager->getStorage('node');
 
     $nids = $nodeStorage->getQuery()
@@ -53,30 +65,36 @@ class SsautoCommands extends DrushCommands {
       ->accessCheck(FALSE)
       ->execute();
 
-    $nids   = array_values($nids);
-    $total  = count($nids);
-    $chunks = array_chunk($nids, 500);
-    $done   = 0;
-    $batch  = 0;
+    $nids       = array_values($nids);
+    $total      = count($nids);
+    $chunks     = array_chunk($nids, $batchSize);
     $numBatches = count($chunks);
+    $done       = 0;
+    $batch      = 0;
 
     if ($total === 0) {
       $this->output()->writeln('<comment>No published nodes found.</comment>');
       return;
     }
 
-    $this->output()->writeln(sprintf('<info>Rebuilding ssauto index for %d nodes in %d batches...</info>', $total, $numBatches));
+    $this->output()->writeln(sprintf(
+      '<info>Rebuilding ssauto index for %d nodes in %d batches (batch size: %d)...</info>',
+      $total, $numBatches, $batchSize,
+    ));
 
     foreach ($chunks as $chunk) {
       $batch++;
       $this->indexService->buildIndex($chunk);
       $done += count($chunk);
 
-      // Release entity storage cache after every chunk.
+      // Release entity storage cache after every batch to keep memory flat.
       $nodeStorage->resetCache($chunk);
 
       $percent = (int) round(($done / $total) * 100);
-      $this->output()->writeln(sprintf('  Batch %d/%d (%d%%)', $batch, $numBatches, $percent));
+      $this->output()->writeln(sprintf(
+        '  Batch %d/%d — %d/%d nodes (%d%%)',
+        $batch, $numBatches, $done, $total, $percent,
+      ));
     }
 
     $this->output()->writeln(sprintf('<info>Done. Indexed %d nodes.</info>', $done));
