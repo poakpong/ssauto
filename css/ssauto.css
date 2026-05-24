@@ -171,10 +171,13 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
 }
 
 /* --------------------------------------------------------------------------
-   Close button (top-right inside overlay)
+   Close button (top-right, always viewport-relative)
+   Uses position:fixed instead of position:absolute so that right/top are
+   always measured from the viewport edge — not from a containing block that
+   may be distorted by a CSS transform on a theme's mobile-menu wrapper.
    -------------------------------------------------------------------------- */
 .ssauto-close {
-  position: absolute;
+  position: fixed;
   top: 0.9rem;
   right: 0.9rem;
   width: 44px;
@@ -188,7 +191,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
   color: #fff;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
-  z-index: 1;
+  z-index: var(--ssauto-z-overlay); /* same level as overlay */
 }
 
 .ssauto-close:hover {

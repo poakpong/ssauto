@@ -241,14 +241,34 @@
             return;
           }
 
-          // Our trigger is unreachable inside the collapsed container; hide it.
-          // This also prevents the stray "×" icon that appears when openOverlay()
-          // adds is-active to the still-visible trigger button.
+          // -----------------------------------------------------------------------
+          // Determine whether hiddenAncestor is a SEARCH drawer or a NAV drawer.
+          //
+          // Search drawer (e.g. thex "Search Box" region):
+          //   Class name contains "search". We hide the trigger and intercept the
+          //   visible toggle's click — opening our overlay in one click.
+          //
+          // Nav / menu drawer (e.g. thex mobile primary-menu-wrapper):
+          //   Class name does NOT contain "search". We leave the trigger visible
+          //   inside the drawer. When the user opens the mobile menu they see the
+          //   trigger and tap it — two taps total (hamburger + trigger), which is
+          //   the normal UX for in-menu search. We must NOT intercept the hamburger
+          //   click here or the overlay would open on every menu-open action.
+          // -----------------------------------------------------------------------
+          var ancestorCls = (hiddenAncestor.className || '').toLowerCase();
+          var isSearchDrawer = /search/.test(ancestorCls);
+
+          if (!isSearchDrawer) {
+            // Nav/menu drawer — trigger stays visible; no click-intercept needed.
+            return;
+          }
+
+          // Search drawer: hide trigger (trapped behind the theme's toggle icon)
+          // and intercept that icon's click to open our overlay directly.
           $trigger.hide();
 
-          // Intercept clicks on the VISIBLE part of the container using the
-          // CAPTURE phase so we fire before the theme's own handler — even if the
-          // theme calls stopPropagation() in its bubble-phase handler.
+          // Use capture phase so we fire before any stopPropagation() in the
+          // theme's own bubble-phase handler.
           hiddenAncestor.parentNode.addEventListener('click', function (e) {
             // Ignore clicks that come from inside the collapsed container.
             if ($(e.target).closest(hiddenAncestor).length) { return; }

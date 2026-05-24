@@ -1,5 +1,5 @@
 ssauto-overlay:
-  version: '1.0.13'
+  version: '1.0.14'
   css:
     theme:
       css/ssauto.css: {}
