@@ -54,6 +54,8 @@ final class SsautoResultsController extends ControllerBase {
     }
     unset($item);
 
+    $theme = $this->config('ssauto.settings')->get('theme') ?? 'dark';
+
     return [
       '#theme'    => 'ssauto_results',
       '#keyword'  => $keyword,
@@ -67,11 +69,12 @@ final class SsautoResultsController extends ControllerBase {
           'ssauto' => [
             'autocompleteUrl' => '/api/ssauto/autocomplete',
             'searchPageUrl'   => '/smart-search',
+            'theme'           => $theme,
           ],
         ],
       ],
       '#cache'    => [
-        'tags'     => ['ssauto_index'],
+        'tags'     => ['ssauto_index', 'config:ssauto.settings'],
         'contexts' => ['url.query_args'],
       ],
     ];

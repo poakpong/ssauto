@@ -19,6 +19,30 @@
 }
 
 /* --------------------------------------------------------------------------
+   Light theme overrides — applied when overlay has .ssauto-overlay--light
+   (controlled by drupalSettings.ssauto.theme = 'light' set in admin UI)
+   -------------------------------------------------------------------------- */
+.ssauto-overlay--light {
+  --ssauto-bg:       #ffffff;
+  --ssauto-accent:   #2563eb;
+  --ssauto-text:     #111827;
+  --ssauto-muted:    #6b7280;
+  --ssauto-border:   rgba(0, 0, 0, 0.10);
+  --ssauto-hover-bg: rgba(37, 99, 235, 0.06);
+}
+
+/* Close button: dark icon on light background */
+.ssauto-overlay--light .ssauto-close {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ssauto-text);
+}
+
+.ssauto-overlay--light .ssauto-close:hover {
+  background: rgba(0, 0, 0, 0.14);
+  color: var(--ssauto-accent);
+}
+
+/* --------------------------------------------------------------------------
    Inline / nav-bar mode
    Added by JS (ssauto-block--inline on the .block element) when the block is
    placed directly in a primary nav or similar always-visible region.

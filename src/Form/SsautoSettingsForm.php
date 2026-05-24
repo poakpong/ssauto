@@ -143,7 +143,6 @@ final class SsautoSettingsForm extends ConfigFormBase {
       '#value'                   => $this->t('Clear index'),
       '#submit'                  => ['::clearIndexSubmit'],
       '#limit_validation_errors' => [],
-      '#button_type'             => 'danger',
       '#attributes'              => [
         'style'   => 'margin-top:12px;',
         'onclick' => "return confirm('" . $this->t('Delete all indexed data? After clearing you can rebuild with drush ssauto:rebuild or let cron re-index gradually.') . "');",
@@ -199,6 +198,17 @@ final class SsautoSettingsForm extends ConfigFormBase {
       '#required'      => TRUE,
     ];
 
+    $form['settings']['theme'] = [
+      '#type'          => 'select',
+      '#title'         => $this->t('Overlay theme'),
+      '#description'   => $this->t('Colour scheme of the search overlay panel.'),
+      '#options'       => [
+        'dark'  => $this->t('Dark (default) — dark background, yellow accent'),
+        'light' => $this->t('Light — white background, blue accent'),
+      ],
+      '#default_value' => $config->get('theme') ?? 'dark',
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -211,6 +221,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
       ->set('results_per_page', (int) $form_state->getValue('results_per_page'))
       ->set('min_keyword_length', (int) $form_state->getValue('min_keyword_length'))
       ->set('cron_batch_size', (int) $form_state->getValue('cron_batch_size'))
+      ->set('theme', (string) $form_state->getValue('theme'))
       ->save();
 
     parent::submitForm($form, $form_state);

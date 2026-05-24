@@ -60,6 +60,11 @@
         var $submitBtn   = $wrapper.find('.ssauto-submit');
         var $suggestions = $wrapper.find('.ssauto-suggestions');
 
+        // Apply theme class before teleporting so the modifier is present
+        // when the overlay is first painted (avoids a flash of wrong theme).
+        var theme = (settings.ssauto && settings.ssauto.theme) || 'dark';
+        $overlay.toggleClass('ssauto-overlay--light', theme === 'light');
+
         // Teleport overlay + backdrop to <body> so they escape any parent
         // CSS transform / overflow that would clip position:fixed children.
         $('body').append($backdrop).append($overlay);
