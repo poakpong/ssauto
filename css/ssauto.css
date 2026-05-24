@@ -177,7 +177,7 @@ body.toolbar-fixed.toolbar-vertical .ssauto-overlay {
    may be distorted by a CSS transform on a theme's mobile-menu wrapper.
    -------------------------------------------------------------------------- */
 .ssauto-close {
-  position: fixed;
+  position: fixed !important; /* theme "button { position:relative }" must not win */
   top: 0.9rem;
   right: 0.9rem;
   width: 44px;

@@ -259,7 +259,39 @@
           var isSearchDrawer = /search/.test(ancestorCls);
 
           if (!isSearchDrawer) {
-            // Nav/menu drawer — trigger stays visible; no click-intercept needed.
+            // Nav/menu drawer — reposition the trigger responsively.
+            //
+            // Mobile (≤991px):
+            //   Insert trigger BEFORE the mobile-menu toggle div (.mobile-menu)
+            //   inside its parent (.header-right, which is display:flex).
+            //   The trigger appears as a flex sibling of the hamburger icon,
+            //   visible in the header without opening the mobile menu first.
+            //
+            // Desktop (≥992px):
+            //   Move trigger back into the block wrapper and activate
+            //   inline-nav mode so it sits on the primary-nav row.
+            var $blockEl      = $wrapper.closest('.block');
+            var $mobileToggle = $(hiddenAncestor.parentNode); // .mobile-menu
+            var mql           = window.matchMedia('(max-width: 991px)');
+            var bpTimer;
+
+            function placeByBreakpoint() {
+              if (mql.matches) {
+                // Mobile: trigger goes before .mobile-menu inside .header-right.
+                $mobileToggle.before($trigger.detach().show());
+                $blockEl.removeClass('ssauto-block--inline');
+              } else {
+                // Desktop: trigger returns into .ssauto-wrapper for inline mode.
+                $wrapper.append($trigger.detach().show());
+                $blockEl.addClass('ssauto-block--inline');
+              }
+            }
+
+            mql.addEventListener('change', function () {
+              clearTimeout(bpTimer);
+              bpTimer = setTimeout(placeByBreakpoint, 80);
+            });
+            placeByBreakpoint(); // run on attach
             return;
           }
 
