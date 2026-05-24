@@ -196,7 +196,7 @@ final class SsautoIndexService {
          WHERE MATCH(title) AGAINST (:kw IN BOOLEAN MODE)
          ORDER BY created DESC
          LIMIT :limit",
-        [':kw' => $keyword . '*', ':limit' => $limit]
+        [':kw' => $this->buildBooleanKeyword($keyword), ':limit' => $limit]
       )->fetchAll();
 
       return array_map(
@@ -221,13 +221,15 @@ final class SsautoIndexService {
    */
   private function runAutocompleteLike(string $keyword, int $limit): array {
     try {
-      $rows = $this->database->select('ssauto_index', 's')
+      // Each word must appear in the title (AND logic, title-only for speed).
+      $query = $this->database->select('ssauto_index', 's')
         ->fields('s', ['nid', 'title', 'url', 'created'])
-        ->condition('title', '%' . $this->database->escapeLike($keyword) . '%', 'LIKE')
         ->orderBy('created', 'DESC')
-        ->range(0, $limit)
-        ->execute()
-        ->fetchAll();
+        ->range(0, $limit);
+      foreach (preg_split('/\s+/', trim($keyword), -1, PREG_SPLIT_NO_EMPTY) as $word) {
+        $query->condition('title', '%' . $this->database->escapeLike($word) . '%', 'LIKE');
+      }
+      $rows = $query->execute()->fetchAll();
 
       return array_map(
         fn($row) => [
@@ -251,7 +253,7 @@ final class SsautoIndexService {
    */
   private function runSearch(string $keyword, int $limit, int $offset): array {
     try {
-      $boolKeyword = $keyword . '*';
+      $boolKeyword = $this->buildBooleanKeyword($keyword);
 
       // Total count query.
       $total = (int) $this->database->query(
@@ -312,14 +314,10 @@ final class SsautoIndexService {
    */
   private function runSearchLike(string $keyword, int $limit, int $offset): array {
     try {
-      $like = '%' . $this->database->escapeLike($keyword) . '%';
+      [$where, $params] = $this->buildLikeCondition($keyword);
 
       $total = (int) $this->database->select('ssauto_index', 's')
-        ->where('title LIKE :like OR summary LIKE :like2 OR tags LIKE :like3', [
-          ':like'  => $like,
-          ':like2' => $like,
-          ':like3' => $like,
-        ])
+        ->where($where, $params)
         ->countQuery()
         ->execute()
         ->fetchField();
@@ -330,11 +328,7 @@ final class SsautoIndexService {
 
       $rows = $this->database->select('ssauto_index', 's')
         ->fields('s', ['nid', 'title', 'url', 'summary', 'tags', 'created'])
-        ->where('title LIKE :like OR summary LIKE :like2 OR tags LIKE :like3', [
-          ':like'  => $like,
-          ':like2' => $like,
-          ':like3' => $like,
-        ])
+        ->where($where, $params)
         ->orderBy('created', 'DESC')
         ->range($offset, $limit)
         ->execute()
@@ -359,6 +353,49 @@ final class SsautoIndexService {
       \Drupal::logger('ssauto')->error('LIKE search failed: @msg', ['@msg' => $e->getMessage()]);
       return ['items' => [], 'total' => 0];
     }
+  }
+
+  /**
+   * Builds a FULLTEXT Boolean mode keyword string from a raw user query.
+   *
+   * Each whitespace-separated token gets a trailing wildcard (*) for prefix
+   * matching and a leading + so ALL tokens are required (AND logic).
+   *
+   * Examples:
+   *   "web"               → "+web*"
+   *   "web accessibility" → "+web* +accessibility*"
+   */
+  private function buildBooleanKeyword(string $keyword): string {
+    $words = preg_split('/\s+/', trim($keyword), -1, PREG_SPLIT_NO_EMPTY);
+    if (empty($words)) {
+      return '';
+    }
+    return implode(' ', array_map(fn($w) => '+' . $w . '*', $words));
+  }
+
+  /**
+   * Builds a raw WHERE clause + params for a multi-word LIKE search.
+   *
+   * Each word must appear in at least one of: title, summary, tags.
+   * Words are joined with AND so all must match somewhere.
+   *
+   * @return array{0: string, 1: array<string, string>}
+   */
+  private function buildLikeCondition(string $keyword): array {
+    $words = preg_split('/\s+/', trim($keyword), -1, PREG_SPLIT_NO_EMPTY);
+    if (empty($words)) {
+      return ['1=0', []];
+    }
+    $parts  = [];
+    $params = [];
+    foreach ($words as $i => $word) {
+      $like = '%' . $this->database->escapeLike($word) . '%';
+      $parts[] = "(title LIKE :lw_t{$i} OR summary LIKE :lw_s{$i} OR tags LIKE :lw_g{$i})";
+      $params[":lw_t{$i}"] = $like;
+      $params[":lw_s{$i}"] = $like;
+      $params[":lw_g{$i}"] = $like;
+    }
+    return [implode(' AND ', $parts), $params];
   }
 
   /**
