@@ -114,7 +114,10 @@
             li.setAttribute('id', 'ssauto-option-' + idx);
             li.setAttribute('aria-selected', 'false');
             li.innerHTML =
-              '<span class="ssauto-suggestion__text">' + highlightKeyword(item.label, keyword) + '</span>' +
+              '<span class="ssauto-suggestion__body">' +
+                '<span class="ssauto-suggestion__text">' + highlightKeyword(item.label, keyword) + '</span>' +
+                (item.date ? '<span class="ssauto-suggestion__date">' + Drupal.checkPlain(item.date) + '</span>' : '') +
+              '</span>' +
               '<svg class="ssauto-suggestion__arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
                 '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>' +
               '</svg>';
@@ -345,7 +348,11 @@
           clearDropdown();
           if (!items.length) { return; }
           items.forEach(function (item) {
-            var $li = $('<li class="ssauto-results-ac-item" role="option" tabindex="-1"></li>').text(item.label);
+            var $li = $('<li class="ssauto-results-ac-item" role="option" tabindex="-1"></li>');
+            $li.html(
+              '<span class="ssauto-results-ac-item__label">' + Drupal.checkPlain(item.label) + '</span>' +
+              (item.date ? '<span class="ssauto-results-ac-item__date">' + Drupal.checkPlain(item.date) + '</span>' : '')
+            );
             $li.on('mousedown', function (e) {
               e.preventDefault(); // prevent input blur before click
               window.location.href = item.url;

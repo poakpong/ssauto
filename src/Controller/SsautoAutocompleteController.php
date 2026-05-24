@@ -37,11 +37,15 @@ final class SsautoAutocompleteController extends ControllerBase {
     $keyword = (string) $request->query->get('q', '');
     $suggestions = $this->indexService->autocomplete($keyword);
 
+    $dateFormatter = \Drupal::service('date.formatter');
     $data = array_map(
       fn(array $item) => [
         'value' => $item['title'],
         'label' => $item['title'],
         'url'   => $item['url'],
+        'date'  => !empty($item['created'])
+          ? $dateFormatter->format((int) $item['created'], 'custom', 'j M Y')
+          : '',
       ],
       $suggestions
     );

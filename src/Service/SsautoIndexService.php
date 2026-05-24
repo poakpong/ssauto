@@ -191,15 +191,21 @@ final class SsautoIndexService {
   private function runAutocompleteFulltext(string $keyword, int $limit): array {
     try {
       $rows = $this->database->query(
-        "SELECT nid, title, url
+        "SELECT nid, title, url, created
          FROM {ssauto_index}
          WHERE MATCH(title) AGAINST (:kw IN BOOLEAN MODE)
+         ORDER BY created DESC
          LIMIT :limit",
         [':kw' => $keyword . '*', ':limit' => $limit]
       )->fetchAll();
 
       return array_map(
-        fn($row) => ['nid' => (int) $row->nid, 'title' => $row->title, 'url' => $row->url],
+        fn($row) => [
+          'nid'     => (int) $row->nid,
+          'title'   => $row->title,
+          'url'     => $row->url,
+          'created' => (int) $row->created,
+        ],
         $rows
       );
     }
@@ -216,14 +222,20 @@ final class SsautoIndexService {
   private function runAutocompleteLike(string $keyword, int $limit): array {
     try {
       $rows = $this->database->select('ssauto_index', 's')
-        ->fields('s', ['nid', 'title', 'url'])
+        ->fields('s', ['nid', 'title', 'url', 'created'])
         ->condition('title', '%' . $this->database->escapeLike($keyword) . '%', 'LIKE')
+        ->orderBy('created', 'DESC')
         ->range(0, $limit)
         ->execute()
         ->fetchAll();
 
       return array_map(
-        fn($row) => ['nid' => (int) $row->nid, 'title' => $row->title, 'url' => $row->url],
+        fn($row) => [
+          'nid'     => (int) $row->nid,
+          'title'   => $row->title,
+          'url'     => $row->url,
+          'created' => (int) $row->created,
+        ],
         $rows
       );
     }
