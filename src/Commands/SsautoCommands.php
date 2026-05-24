@@ -21,6 +21,23 @@ class SsautoCommands extends DrushCommands {
   }
 
   /**
+   * Clears all rows from the ssauto search index.
+   *
+   * After clearing, rebuild immediately with ssauto:rebuild or let cron
+   * re-index nodes in batches over successive runs.
+   *
+   * @command ssauto:clear
+   * @aliases ssc
+   * @usage drush ssauto:clear
+   *   Truncates the ssauto_index table and invalidates caches.
+   */
+  public function clear(): void {
+    $this->indexService->clearIndex();
+    $this->output()->writeln('<info>ssauto index cleared.</info>');
+    $this->output()->writeln('<comment>Run "drush ssauto:rebuild" to rebuild immediately, or wait for cron.</comment>');
+  }
+
+  /**
    * Rebuilds the ssauto search index for all published nodes.
    *
    * @command ssauto:rebuild

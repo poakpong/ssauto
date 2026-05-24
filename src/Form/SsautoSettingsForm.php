@@ -8,6 +8,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\ssauto\Service\SsautoIndexService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -26,6 +27,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
   public function __construct(
     ConfigFactoryInterface $config_factory,
     private readonly Connection $database,
+    private readonly SsautoIndexService $indexService,
   ) {
     parent::__construct($config_factory);
   }
@@ -37,6 +39,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
     return new static(
       $container->get('config.factory'),
       $container->get('database'),
+      $container->get('ssauto.index_service'),
     );
   }
 
@@ -127,6 +130,20 @@ final class SsautoSettingsForm extends ConfigFormBase {
       ];
     }
 
+    // Clear-index action — separate from the main Save button so it never
+    // triggers settings-field validation.
+    $form['index_status']['clear_index'] = [
+      '#type'                    => 'submit',
+      '#value'                   => $this->t('Clear index'),
+      '#submit'                  => ['::clearIndexSubmit'],
+      '#limit_validation_errors' => [],
+      '#button_type'             => 'danger',
+      '#attributes'              => [
+        'style'   => 'margin-top:12px;',
+        'onclick' => "return confirm('" . $this->t('Delete all indexed data? After clearing you can rebuild with drush ssauto:rebuild or let cron re-index gradually.') . "');",
+      ],
+    ];
+
     // -------------------------------------------------------------------------
     // Settings fields
     // -------------------------------------------------------------------------
@@ -191,6 +208,20 @@ final class SsautoSettingsForm extends ConfigFormBase {
       ->save();
 
     parent::submitForm($form, $form_state);
+  }
+
+  /**
+   * Submit handler for the "Clear index" button.
+   *
+   * Truncates ssauto_index entirely. The user can then rebuild via
+   * `drush ssauto:rebuild` for an immediate full rebuild, or simply wait
+   * for cron which will re-index nodes in batches automatically.
+   */
+  public function clearIndexSubmit(array &$form, FormStateInterface $form_state): void {
+    $this->indexService->clearIndex();
+    $this->messenger()->addWarning(
+      $this->t('Index cleared. Run <code>drush ssauto:rebuild</code> to rebuild immediately, or leave cron to re-index all content automatically.')
+    );
   }
 
   // ---------------------------------------------------------------------------

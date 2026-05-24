@@ -183,6 +183,17 @@ final class SsautoIndexService {
   }
 
   /**
+   * Truncates the entire search index and invalidates cache.
+   *
+   * After calling this, use drush ssauto:rebuild to re-index immediately,
+   * or leave cron to re-index nodes gradually over successive runs.
+   */
+  public function clearIndex(): void {
+    $this->database->truncate('ssauto_index')->execute();
+    $this->invalidateCache();
+  }
+
+  /**
    * Removes a single node from the index and invalidates cache.
    */
   public function removeFromIndex(int $nid): void {
