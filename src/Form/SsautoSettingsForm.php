@@ -7,6 +7,7 @@ namespace Drupal\ssauto\Form;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\ssauto\Service\SsautoIndexService;
@@ -30,6 +31,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
     TypedConfigManagerInterface $typedConfigManager,
     private readonly Connection $database,
     private readonly SsautoIndexService $indexService,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
   ) {
     parent::__construct($config_factory, $typedConfigManager);
   }
@@ -43,6 +45,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
       $container->get('config.typed'),
       $container->get('database'),
       $container->get('ssauto.index_service'),
+      $container->get('entity_type.manager'),
     );
   }
 
@@ -252,7 +255,7 @@ final class SsautoSettingsForm extends ConfigFormBase {
    */
   private function getTotalPublishedCount(): int {
     try {
-      return (int) $this->entityTypeManager()
+      return (int) $this->entityTypeManager
         ->getStorage('node')
         ->getQuery()
         ->condition('status', 1)
