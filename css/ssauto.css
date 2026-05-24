@@ -19,6 +19,36 @@
 }
 
 /* --------------------------------------------------------------------------
+   Inline / nav-bar mode
+   Added by JS (ssauto-block--inline on the .block element) when the block is
+   placed directly in a primary nav or similar always-visible region.
+   Flips the Drupal block wrapper chain from block-level to inline-flex so the
+   trigger button sits on the same row as menu items.
+   -------------------------------------------------------------------------- */
+.ssauto-block--inline {
+  display: inline-flex !important;
+  align-items: center;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.ssauto-block--inline .block-content,
+.ssauto-block--inline .ssauto-wrapper {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+}
+
+/* In inline/nav mode the trigger inherits the nav's text colour.
+   If the theme applies colour: #fff to its nav buttons/blocks, this
+   CSS variable override (default: dark grey) keeps the icon visible.
+   Themes can also set --ssauto-nav-trigger-color in their own CSS. */
+.ssauto-block--inline .ssauto-trigger {
+  color: var(--ssauto-nav-trigger-color, #333);
+}
+
+/* --------------------------------------------------------------------------
    Trigger button
    -------------------------------------------------------------------------- */
 .ssauto-trigger {

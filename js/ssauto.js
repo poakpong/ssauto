@@ -232,7 +232,14 @@
             node = node.parentNode;
           }
 
-          if (!hiddenAncestor) { return; } // Wrapper is already visible — trigger works normally.
+          if (!hiddenAncestor) {
+            // Wrapper is directly visible (e.g. placed in a primary-nav region).
+            // Drupal renders blocks as <div> (block-level), which pushes them to
+            // a new row below menu items. Add a class so CSS can flip the whole
+            // block chain to inline-flex and align the trigger with nav items.
+            $wrapper.closest('.block').addClass('ssauto-block--inline');
+            return;
+          }
 
           // Our trigger is unreachable inside the collapsed container; hide it.
           // This also prevents the stray "×" icon that appears when openOverlay()
