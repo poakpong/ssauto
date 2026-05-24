@@ -277,12 +277,20 @@
 
             function placeByBreakpoint() {
               if (mql.matches) {
-                // Mobile: trigger goes before .mobile-menu inside .header-right.
-                $mobileToggle.before($trigger.detach().show());
+                // Mobile: insert trigger immediately before .mobile-menu.
+                // margin-left:auto consumes all remaining flex space to the
+                // left, pushing the trigger (and the hamburger after it) to
+                // the RIGHT end of .header-right — keeping them adjacent
+                // regardless of the container's justify-content value.
+                $mobileToggle.before(
+                  $trigger.detach().show().css('margin-left', 'auto')
+                );
                 $blockEl.removeClass('ssauto-block--inline');
               } else {
                 // Desktop: trigger returns into .ssauto-wrapper for inline mode.
-                $wrapper.append($trigger.detach().show());
+                $wrapper.append(
+                  $trigger.detach().show().css('margin-left', '')
+                );
                 $blockEl.addClass('ssauto-block--inline');
               }
             }
